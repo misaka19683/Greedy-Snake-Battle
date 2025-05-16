@@ -29,7 +29,7 @@ struct Game {
     food: (i32, i32),
     food_type: FoodType,
     game_over: bool,
-    base_speed:u32,
+    base_speed:u64,
     is_accelerating: bool,
 }
 
@@ -44,10 +44,10 @@ impl Game {
                 direction: Direction::Right,
                 next_direction: Direction::Right,
             },
-            food,
             food_type,
+            food,
             game_over: false,
-            base_speed: 150u32,
+            base_speed: 150,
             is_accelerating: false,
         }
     }
@@ -102,15 +102,6 @@ impl Game {
         } else {
             self.snake.body.pop();
         }
-
-        // // 如果加速状态开启，缩短更新间隔
-        // if self.is_accelerating {
-        //     *update_interval = std::time::Duration::from_millis(50); // 加速时更新间隔为 50ms
-        //     println!("加速状态开启，更新间隔：{:?}",update_interval)
-        // } else {
-        //     *update_interval = std::time::Duration::from_millis(150); // 恢复默认更新间隔
-        //     println!("加速状态关闭，更新间隔：{:?}",update_interval)
-        // }
     }
 
     fn handle_input(&mut self, key: Key, pressed:bool) {
@@ -175,12 +166,10 @@ fn main() {
 
         let current_speed = if game.is_accelerating {
             game.base_speed / 2  // 加速时速度加倍
-        } else {
-            game.base_speed
-        };
-        println!("{}",current_speed);
+        } else { game.base_speed };
+        // println!("{}",current_speed);
         //更新游戏状态
-        if last_update.elapsed() >= std::time::Duration::from_millis(current_speed as u64) {
+        if last_update.elapsed() >= std::time::Duration::from_millis(current_speed) {
             game.update();
             last_update = std::time::Instant::now();
         }
