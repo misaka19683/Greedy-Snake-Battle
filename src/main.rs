@@ -29,13 +29,15 @@ struct Game {
     food: (i32, i32),
     food_type: FoodType,
     game_over: bool,
+    base_speed:u32,
+    is_accelerating: bool,
 }
 
 impl Game {
     fn new() -> Self {
         let mut rng = rand::rng();
-        let origin_position:Vec<(i32,i32)>=vec![(5, 5), (4, 5), (3, 5)];
-        let (food, food_type) = generate_food(&mut rng,&origin_position); // 调用辅助函数生成食物
+        let origin_position: Vec<(i32, i32)> = vec![(5, 5), (4, 5), (3, 5)];
+        let (food, food_type) = generate_food(&mut rng, &origin_position); // 调用辅助函数生成食物
         Game {
             snake: Snake {
                 body: origin_position,
@@ -45,6 +47,8 @@ impl Game {
             food,
             food_type,
             game_over: false,
+            base_speed: 150u32,
+            is_accelerating: false,
         }
     }
 
@@ -79,9 +83,9 @@ impl Game {
         // 吃食物判断
         if new_head == self.food {
             let mut rng = rand::rng();
-            let (new_food, new_food_type) = generate_food(&mut rng,&self.snake.body); // 生成新的食物
+            let (new_food, new_food_type) = generate_food(&mut rng, &self.snake.body); // 生成新的食物
             self.food = new_food;
-            
+
 
             // 根据食物类型调整蛇的长度
             match self.food_type {
@@ -98,12 +102,34 @@ impl Game {
         } else {
             self.snake.body.pop();
         }
+
+        // // 如果加速状态开启，缩短更新间隔
+        // if self.is_accelerating {
+        //     *update_interval = std::time::Duration::from_millis(50); // 加速时更新间隔为 50ms
+        //     println!("加速状态开启，更新间隔：{:?}",update_interval)
+        // } else {
+        //     *update_interval = std::time::Duration::from_millis(150); // 恢复默认更新间隔
+        //     println!("加速状态关闭，更新间隔：{:?}",update_interval)
+        // }
     }
 
-    fn handle_input(&mut self, key: Key) {
+    fn handle_input(&mut self, key: Key, pressed:bool) {
         if self.game_over {
+            // 如果游戏结束，仅允许通过 R 键重启游戏
+            if key == Key::R {
+                *self = Game::new() // 重置游戏状态
+            }
             return;
         }
+        
+        // 处理空格键或Shift键加速
+        match key {
+            Key::Space | Key::LShift | Key::RShift => {
+                self.is_accelerating = pressed;
+            }
+            _ => {}
+        }
+        
         self.snake.next_direction = match key {
             Key::Up if self.snake.direction != Direction::Down => Direction::Up,
             Key::Down if self.snake.direction != Direction::Up => Direction::Down,
@@ -137,21 +163,27 @@ fn main() {
         "Snake-RS",
         [WINDOW_SIZE as u32 * GRID_SIZE as u32, WINDOW_SIZE as u32 * GRID_SIZE as u32],
     )
-    .exit_on_esc(true)
-    .build()
-    .unwrap();
+        .exit_on_esc(true)
+        .build()
+        .unwrap();
 
     let mut game = Game::new();
     let mut last_update = std::time::Instant::now();
-    let update_interval = std::time::Duration::from_millis(150);
 
     while let Some(e) = window.next() {
-        //处理输入事件
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-            game.handle_input(key);
+        // 处理按键事件（包含按住状态）
+        if let Some(ButtonArgs { button: Button::Keyboard(key), state, .. }) = e.button_args() {
+            game.handle_input(key, state == ButtonState::Press);
         }
+
+        let current_speed = if game.is_accelerating {
+            game.base_speed / 2  // 加速时速度加倍
+        } else {
+            game.base_speed
+        };
+        println!("{}",current_speed);
         //更新游戏状态
-        if last_update.elapsed() >= update_interval {
+        if last_update.elapsed() >= std::time::Duration::from_millis(current_speed as u64) {
             game.update();
             last_update = std::time::Instant::now();
         }
