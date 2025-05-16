@@ -1,0 +1,9 @@
+[package]
+name = "hungry_snake"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+piston2d-graphics = "0.45.0"
+piston_window = "0.132.0"
+rand = "0.9.1"
