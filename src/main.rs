@@ -122,12 +122,9 @@ impl Game {
             return;
         }
         
-        // 处理空格键或Shift键加速
-        match key {
-            Key::Space | Key::LShift | Key::RShift => {
-                self.is_accelerating = pressed;
-            }
-            _ => {}
+        // 处理空格键加速
+        if key == Key::Space {
+            self.is_accelerating = pressed;
         }
         
         self.snake.next_direction = match key {
