@@ -5,6 +5,7 @@ const GRID_SIZE: i32 = 20;
 const WINDOW_SIZE: i32 = 30;
 
 #[derive(Clone, PartialEq)]
+#[derive(Debug)]
 enum Direction {
     Up,
     Down,
@@ -92,10 +93,11 @@ impl Game {
                 FoodType::Normal => {} // 普通食物不改变长度
                 FoodType::Special => {
                     // 特殊食物让蛇变长四格
-                    for _ in 0..4 {
+                    for _ in 0..3 {
                         let tail = *self.snake.body.last().unwrap();
                         self.snake.body.push(tail);
                     }
+                    // self.snake.body.pop();
                 }
             }
             self.food_type = new_food_type;
@@ -112,12 +114,12 @@ impl Game {
             }
             return;
         }
-        
+
         // 处理空格键加速
         if key == Key::Space {
             self.is_accelerating = pressed;
         }
-        
+
         self.snake.next_direction = match key {
             Key::Up if self.snake.direction != Direction::Down => Direction::Up,
             Key::Down if self.snake.direction != Direction::Up => Direction::Down,
@@ -212,5 +214,81 @@ fn main() {
                 g,
             );
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use piston_window::Key;
+
+    #[test]
+    fn test_game_new() {
+        let game = Game::new();
+        assert_eq!(game.snake.body.len(), 3); // 初始蛇的长度应为3
+        assert_eq!(game.snake.direction, Direction::Right); // 初始方向应为向右
+        assert!(!game.game_over); // 游戏开始时不应结束
+    }
+
+    #[test]
+    fn test_snake_movement() {
+        let mut game = Game::new();
+        game.update(); // 更新游戏状态，蛇应该向前移动
+        assert_eq!(game.snake.body[0], (6, 5)); // 蛇头应该从 (5, 5) 移动到 (6, 5)
+    }
+
+    #[test]
+    fn test_wall_wrap() {
+        let mut game = Game::new();
+        game.snake.body = vec![(WINDOW_SIZE - 1, 5)]; // 将蛇头放在窗口边缘
+        game.snake.direction = Direction::Right;
+        game.update(); // 更新游戏状态，蛇应该穿过窗口右边并从左边出现
+        assert_eq!(game.snake.body[0], (0, 5));
+    }
+
+    #[test]
+    fn test_collision_with_body() {
+        let mut game = Game::new();
+        game.snake.body = vec![(5, 5), (4, 5), (3, 5), (6, 5)]; // 创建一个碰撞情况
+        game.update(); // 更新游戏状态，应该触发游戏结束
+        assert!(game.game_over);
+    }
+
+    #[test]
+    fn test_food_consumption() {
+        let mut game = Game::new();
+        game.food = (6, 5); // 将食物放置在蛇头即将移动的位置
+        game.food_type = FoodType::Normal;
+        game.update(); // 更新游戏状态，蛇应该吃掉食物
+        assert_ne!(game.food, (6, 5)); // 食物位置应该改变
+        assert_eq!(game.snake.body.len(), 4); // 吃了普通食物后蛇的长度应该增加
+    }
+
+    #[test]
+    fn test_special_food_consumption() {
+        let mut game = Game::new();
+        game.food = (6, 5); // 将食物放置在蛇头即将移动的位置
+        game.food_type = FoodType::Special; // 设置食物类型为特殊
+        game.update(); // 更新游戏状态，蛇应该吃掉特殊食物
+        assert_ne!(game.food, (6, 5)); // 食物位置应该改变
+        assert_eq!(game.snake.body.len(), 7); // 吃了特殊食物后蛇的长度应该增加4格
+    }
+
+    #[test]
+    fn test_input_handling() {
+        let mut game = Game::new();
+        game.handle_input(Key::Up, true); // 改变蛇的方向为向上
+        assert_eq!(game.snake.next_direction, Direction::Up);
+        game.handle_input(Key::Left, true); // 尝试将方向改为相反，应无效
+        assert_ne!(game.snake.next_direction, Direction::Left);
+    }
+
+    #[test]
+    fn test_restart_game() {
+        let mut game = Game::new();
+        game.game_over = true;
+        game.handle_input(Key::R, true); // 按下 R 键重启游戏
+        assert!(!game.game_over); // 游戏应该重新开始
+        assert_eq!(game.snake.body.len(), 3); // 蛇的长度应该重置为初始值
     }
 }
